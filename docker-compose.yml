@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:4.4
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+
+  api:
+    build:
+      context: .
+    container_name: nodejs-api
+    ports:
+      - "30000:30000"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017/books
+      - NODE_ENV=production
+    depends_on: 
+      - mongo
+    restart: always
+
+  test:
+    build:
+      context: .
+    container_name: nodejs-api-test
+    environment:
+      - MONGO_URL=mongodb://mongo:27017/books-test
+      - NODE_ENV=test
+    depends_on:
+      - mongo
+    command: npm test
+
+volumes:
+  mongo-data:

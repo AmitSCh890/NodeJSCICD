@@ -1,0 +1,61 @@
+- hosts: all
+  vars:
+    dockerhub_user: "{{ lookup('env', 'DOCKERHUB_CREDS_USR') }}"
+    dockerhub_pass: "{{ lookup('env', 'DOCKERHUB_CREDS_PSW') }}"
+    image_name: "{{ lookup('env', 'IMAGE_NAME') }}"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') }}"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - python3-pip
+        state: present
+
+    - name: Login to Docker Hub
+      shell: echo {{ dockerhub_pass }} | docker login -u {{ dockerhub_user }} --password-stdin
+      args:
+        executable: /bin/bash
+      no_log: true
+
+    - name: Pull Docker image
+      shell: docker pull {{ dockerhub_user }}/{{ image_name }}:{{ image_tag }}
+      args:
+        executable: /bin/bash
+
+    - name: Stop and remove existing container
+      shell: docker stop {{ image_name }} || true && docker rm {{ image_name }} || true
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Run Docker container
+      shell: |
+        docker run -d --name {{ image_name }} --restart always \
+        -p 3000:3000 \
+        {{dockerhub_user}}/{{ image_name }}:{{ image_tag }}
+      args:
+        executable: /bin/bash
+    
+    - name: Ensure Docker is running
+      service:
+        name: Docker
+        state: started
+
+
+    // 1.5 Printing Deployment Details//
+    
+    - name: Print Instance Information
+      debug:
+        msg:
+          - "________________________ EC2 Instance Details __________________________"
+          - "Public IP: {{ 44.201.219.140 }}"
+          - "Private IP: {{ 172.31.83.48 }}"
+          - "Hostname: {{ ansible_hostname }}"
+          - "Application URL: http://{{ ansible_host }}:3000"
+          - "--------------------------------------------"
